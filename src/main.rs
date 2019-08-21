@@ -86,7 +86,7 @@ fn convert_text(content: &str) -> String {
     while index < chars.len() {
         let tags: &'static [&'static str] = &[
             "h1", "h2", "h3", "h4", "h5", "p", "b", "i", "strong", "em", "v-btn", "button", "div", "span", "v-card-title",
-            "vue-markdown",
+            "vue-markdown", "v-card-text",
         ];
 
         for tag in tags.iter() {
