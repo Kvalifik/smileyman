@@ -7,6 +7,27 @@ use std::env;
 use std::io::prelude::*;
 use std::path::Path;
 
+fn write(path: &str, data: &str) {
+  let path = Path::new(path);
+
+  let split_name = path.file_name().unwrap().to_str().unwrap().split('.');
+  let split: Vec<&str> = split_name.collect();
+
+  let path_split = path.to_str().unwrap().split('/').collect::<Vec<&str>>();
+
+  let path_real  = if path_split.len() > 1 {
+    format!("{}/{}.md", path_split[0 .. path_split.len() - 1].join("/"), split[0])
+  } else {
+    format!("{}.md", split[0])
+  };
+
+  let mut output_file = File::create(&path_real).unwrap();
+  match output_file.write_all(data.as_bytes()) {
+    Ok(_)    => (),
+    Err(why) => println!("{}", why)
+  }
+}
+
 fn grap_path(path: &str) {
     let meta = match metadata(path) {
         Ok(data) => data,
@@ -17,12 +38,8 @@ fn grap_path(path: &str) {
         let split: Vec<&str> = path.split('.').collect();
 
         if *split.last().unwrap() == "vue" {
-            let content = file_content(path);
-
-            println!("{}", convert_text(&content))
+            write(path, &convert_text(&file_content(path)))
         }
-
-        println!("{}", split.last().unwrap())
     } else {
         let paths = fs::read_dir(path).unwrap();
 
@@ -73,13 +90,15 @@ fn convert_text(content: &str) -> String {
                     index += tag.len() + 1;
 
                     if index < chars.len() && chars[index] != '>' {
-                        let mut j = index + tag.len() + 1;
+                        let mut j = index;
 
                         while j < chars.len() {
                             j     += 1;
                             index += 1;
 
                             if j < chars.len() && chars[j] == '>' {
+                                index += 1;
+
                                 break
                             }
                         }
@@ -107,9 +126,11 @@ fn convert_text(content: &str) -> String {
                         for _ in 0 .. acc {
                             prefix.push('#')
                         }
+
+                        prefix.push(' ')
                     }
 
-                    converted.push_str(&format!("{} {}\n", prefix, result));
+                    converted.push_str(&format!("{}{}\n", prefix, result));
                     index += tag.len() + 3;
 
                     result = String::new();
