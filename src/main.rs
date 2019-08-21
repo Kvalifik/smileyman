@@ -73,85 +73,126 @@ fn file_content(path: &str) -> String {
 fn convert_text(content: &str) -> String {
     let mut converted = String::new();
 
-    'outer: for line in content.lines() {
-        let mut started = false;
-        let mut index = 0;
-        let chars: Vec<char> = line.chars().collect();
+    let mut started = false;
+    let mut index = 0;
+    let chars: Vec<char> = content.chars().collect();
 
-        let mut result = String::new();
+    let mut result = String::new();
 
-        while index < chars.len() {
-            let tags: &'static [&'static str] = &["h1", "h2", "h3", "h4", "h5", "p", "b", "i", "strong", "em", "v-btn", "button"];
+    while index < chars.len() {
+        let tags: &'static [&'static str] = &["h1", "h2", "h3", "h4", "h5", "p", "b", "i", "strong", "em", "v-btn", "button", "div", "span", "v-card-title"];
 
-            for tag in tags.iter() {
-                if peek_range(&chars, index, tag.len() + 1) == format!("<{}", tag) {
-                    started = true;
+        for tag in tags.iter() {
+            if peek_range(&chars, index, tag.len() + 1) == format!("<{}", tag) {
+                started = true;
 
-                    index += tag.len() + 1;
+                index += tag.len() + 1;
 
-                    if index < chars.len() && chars[index] != '>' {
-                        let mut j = index;
+                if index < chars.len() && chars[index] != '>' {
+                    let mut j = index;
 
-                        while j < chars.len() {
-                            j     += 1;
+                    while j < chars.len() {
+                        j     += 1;
+                        index += 1;
+
+                        if j < chars.len() && chars[j] == '>' {
                             index += 1;
 
-                            if j < chars.len() && chars[j] == '>' {
-                                index += 1;
-
-                                break
-                            }
+                            break
                         }
-                    } else {
-                        index += 1
                     }
-
-                    break
-
-                } else if peek_range(&chars, index, tag.len() + 3) == format!("</{}>", tag) {
-                    started = false;
-
-                    let mut prefix = String::new();
-
-                    if tag.contains('h') {
-                        let acc = match *tag {
-                            "h1" => 1,
-                            "h2" => 2,
-                            "h3" => 3,
-                            "h4" => 4,
-                            "h5" => 5,
-                            _ => unreachable!()
-                        };
-
-                        for _ in 0 .. acc {
-                            prefix.push('#')
-                        }
-
-                        prefix.push(' ')
-                    }
-
-                    converted.push_str(&format!("{}{}\n", prefix, result));
-                    index += tag.len() + 3;
-
-                    result = String::new();
-
-                    break
-                }
-            }
-
-            if index < chars.len() {
-                let c = &chars[index];
-
-                if started {
-                    result.push(*c);
+                } else {
+                    index += 1
                 }
 
-                index += 1
+                break
+
+            } else if peek_range(&chars, index, tag.len() + 3) == format!("</{}>", tag) {
+                started = false;
+
+                let mut prefix  = String::new();
+                let mut postfix = String::new();
+
+                if ["b", "strong"].contains(tag) {
+                    prefix = "**".to_owned();
+                    postfix = "**".to_owned()
+                }
+
+                if ["i", "em"].contains(tag) {
+                    prefix = "*".to_owned();
+                    postfix = "*".to_owned()
+                }
+
+                if ["v-btn", "button"].contains(tag) {
+                    prefix = "[".to_owned();
+                    postfix = "]".to_owned()
+                }
+
+                if tag.contains('h') {
+                    let acc = match *tag {
+                        "h1" => 1,
+                        "h2" => 2,
+                        "h3" => 3,
+                        "h4" => 4,
+                        "h5" => 5,
+                        _ => unreachable!()
+                    };
+
+                    for _ in 0 .. acc {
+                        prefix.push('#')
+                    }
+
+                    prefix.push(' ')
+                }
+
+                result = strip_garbage(&result).trim().to_string();
+
+                converted.push_str(&format!("{}{}{}\n", prefix, result, postfix));
+                converted.push_str("\n---\n");
+
+                index += tag.len() + 3;
+
+                result = String::new();
+
+                break
             }
+        }
+
+        if index < chars.len() {
+            let c = &chars[index];
+
+            if started && *c != '\t' {
+                result.push(*c);
+            }
+
+            index += 1
         }
     }
 
-    converted
+    converted.trim().to_string()
+}
+
+fn strip_garbage(text: &str) -> String {
+    let mut nest = 0;
+    let mut result = String::new();
+
+    let chars: Vec<char> = text.chars().collect();
+
+    for i in 0 .. chars.len() {
+        match chars[i] {
+            '<' => {
+                nest += 1
+            },
+            '>' => {
+                nest -= 1;
+            },
+            _ => if nest == 0 {
+                result.push(chars[i])
+            },
+        }
+    }
+
+    result
 }
 
 fn peek_range(content: &Vec<char>, index: usize, len: usize) -> String {
@@ -162,10 +203,19 @@ fn peek_range(content: &Vec<char>, index: usize, len: usize) -> String {
     }
 }
 
+const HELP: &'static str = r#"
+SMILEYMAN :)
+
+USAGE:
+    smileyman <file/folder>
+"#;
+
 fn main() {
     let args = env::args().collect::<Vec<String>>();
 
     if args.len() > 1 {
         grap_path(&args[1])
+    } else {
+        println!("{}", HELP)
     }
 }
