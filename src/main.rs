@@ -10,6 +10,10 @@ use std::path::Path;
 fn write(path: &str, data: &str) {
   let path = Path::new(path);
 
+  if data.len() == 0 {
+    return
+  }
+
   let split_name = path.file_name().unwrap().to_str().unwrap().split('.');
   let split: Vec<&str> = split_name.collect();
 
@@ -80,7 +84,10 @@ fn convert_text(content: &str) -> String {
     let mut result = String::new();
 
     while index < chars.len() {
-        let tags: &'static [&'static str] = &["h1", "h2", "h3", "h4", "h5", "p", "b", "i", "strong", "em", "v-btn", "button", "div", "span", "v-card-title"];
+        let tags: &'static [&'static str] = &[
+            "h1", "h2", "h3", "h4", "h5", "p", "b", "i", "strong", "em", "v-btn", "button", "div", "span", "v-card-title",
+            "vue-markdown",
+        ];
 
         for tag in tags.iter() {
             if peek_range(&chars, index, tag.len() + 1) == format!("<{}", tag) {
@@ -147,8 +154,10 @@ fn convert_text(content: &str) -> String {
 
                 result = strip_garbage(&result).trim().to_string();
 
-                converted.push_str(&format!("{}{}{}\n", prefix, result, postfix));
-                converted.push_str("\n---\n");
+                if result.len() > 0 {
+                    converted.push_str(&format!("{}{}{}\n", prefix, result, postfix));
+                    converted.push_str("\n---\n");
+                }
 
                 index += tag.len() + 3;
 
